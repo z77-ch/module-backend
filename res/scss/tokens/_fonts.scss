@@ -1,0 +1,20 @@
+// Inter (variable) — SIL Open Font License 1.1, see ../fonts/inter/OFL.txt.
+// Bundled deliberately: open license permits redistribution in this MIT repo.
+// Two files cover all weights 100–900 incl. italics (no static cuts needed).
+// Path relative to compiled CSS output at res/assets/css/
+
+@font-face {
+    font-family:   'Inter';
+    src:           url('../fonts/inter/InterVariable.woff2') format('woff2');
+    font-weight:   100 900;
+    font-style:    normal;
+    font-display:  swap;
+}
+
+@font-face {
+    font-family:   'Inter';
+    src:           url('../fonts/inter/InterVariable-Italic.woff2') format('woff2');
+    font-weight:   100 900;
+    font-style:    italic;
+    font-display:  swap;
+}
