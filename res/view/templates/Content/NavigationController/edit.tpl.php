@@ -5,6 +5,7 @@
 /** @var array<string, string> $navSlots slug => label (config, ADR-022) */
 /** @var \Z77\Shared\Entities\Navigation[] $refTargets */
 /** @var string $entityCsrf */
+/** @var string $entityHash stored-state hash (optimistic locking) — '' for new entities */
 /** @var \Z77\Persistence\Validation\EntityValidator $validator */
 
 $isNew    = $entry->getId() === null;
@@ -20,6 +21,7 @@ $fieldError = function (string $name) use ($validator): string {
 <form data-fetch-post data-check-url="/backend/content/navigation/check-field">
     <?php if (!$isNew): ?>
     <input type="hidden" name="entity_csrf" value="<?= e($entityCsrf) ?>">
+    <input type="hidden" name="entity_hash" value="<?= e($entityHash) ?>">
     <?php endif; ?>
     <?php if ($hasParent): ?>
     <input type="hidden" name="parent_id" value="<?= e($parent->getId()) ?>">
@@ -36,7 +38,17 @@ $fieldError = function (string $name) use ($validator): string {
     <div class="be-modal__body">
         <?php if ($validator->hasErrors()): ?>
         <div class="be-modal__alert be-modal__alert--error">
-            Bitte überprüfe die markierten Eingaben.
+            <?php if ($validator->getErrors()): ?>
+                <?php foreach ($validator->getErrors() as $error): ?>
+                <div><?= e($error) ?></div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                Bitte überprüfe die markierten Eingaben.
+            <?php endif; ?>
+            <?php if ($validator->hasStateConflict()): ?>
+            <button type="button" class="be-btn be-btn--ghost be-btn--sm" style="margin-top:.5rem"
+                    data-fetch-get="/backend/content/navigation/edit?id=<?= e($entry->getId()) ?>">Neu laden</button>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
         <div class="be-modal__switches">
@@ -55,6 +67,11 @@ $fieldError = function (string $name) use ($validator): string {
                 <?= raw($fieldError('name')) ?>
             </div>
         </div>
+        <?php if ($entry->getKey() !== null): ?>
+        <p style="font-size:.75rem;color:var(--be-muted,#94a3b8);margin:-.25rem 0 .5rem">
+            Framework-Key: <code><?= e($entry->getKey()) ?></code> — feste Import-Identität dieses Eintrags, nicht editierbar (ADR-032).
+        </p>
+        <?php endif; ?>
         <p style="font-size:.75rem;color:var(--be-muted,#94a3b8);margin:-.25rem 0 .5rem">
             Öffentliche URLs (Aliase) werden separat unter
             <a href="/backend/content/navigation-alias/list">URL-Aliase</a> verwaltet (ADR-015).

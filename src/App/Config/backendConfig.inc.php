@@ -91,12 +91,107 @@ return [
             ],
         ],
         // Installation service tools. Backups contain the whole user store
-        // (loginUsers.json) and possibly DB dumps — SUPER_USER on every action
+        // (backendUsers.json) and possibly DB dumps — SUPER_USER on every action
         // (inherited from controllerRole; ADR-021 governance, docs/topics/backup.md).
         'service' => [
             'BackupController' => [
                 'controllerRole' => AuthRole::SUPER_USER,
             ],
+            // Deciding WHEN a job runs is installation governance: a job runs
+            // with the role its module declares and may delete data (ADR-031).
+            'JobController' => [
+                'controllerRole' => AuthRole::SUPER_USER,
+            ],
+            // Data import (ADR-032): adopts shipped/foreign records into the
+            // installation's data — writes navigation, aliases, metadata.
+            // Installation governance like backup/jobs.
+            'ImportController' => [
+                'controllerRole' => AuthRole::SUPER_USER,
+            ],
+        ],
+    ],
+
+    // Importable entities (ADR-032): the whitelist the backend data import
+    // works on — aggregated by ModuleManager::getImportEntities(). The screen
+    // only ever offers these; an entity class never comes from a request.
+    'importEntities' => [
+        \Z77\Shared\Entities\Navigation::class,
+        \Z77\Shared\Entities\NavigationAlias::class,
+        \Z77\Shared\Entities\MetaData::class,
+    ],
+
+    // Background jobs (ADR-031). The services themselves live in the kernel,
+    // but jobs are declared per MODULE and this module owns the service section
+    // that operates them — so the entries sit here. A project without the
+    // backend keeps the manual CLI entry (`vendor/bin/z77-backup`).
+    //
+    // Backup: one class, three keys — the type travels in the payload. No
+    // 'defaultSchedule': how often an installation is backed up, and how much
+    // disk that may cost, is the operator's call. The schedule is switched on
+    // in the backend, not by installing a package.
+    'jobs' => [
+        'backup-data' => [
+            'class'       => \Z77\Shared\Jobs\BackupJob::class,
+            'label'       => 'Backup — Daten',
+            'runAs'       => AuthRole::SUPER_USER,
+            'maxAttempts' => 2,
+            'payload'     => ['type' => 'data'],
+        ],
+        'backup-db' => [
+            'class'       => \Z77\Shared\Jobs\BackupJob::class,
+            'label'       => 'Backup — Datenbank',
+            'runAs'       => AuthRole::SUPER_USER,
+            'maxAttempts' => 2,
+            'payload'     => ['type' => 'db'],
+        ],
+        'backup-full' => [
+            'class'       => \Z77\Shared\Jobs\BackupJob::class,
+            'label'       => 'Backup — Gesamtprojekt',
+            'runAs'       => AuthRole::SUPER_USER,
+            'maxAttempts' => 2,
+            'payload'     => ['type' => 'full'],
+        ],
+        // Applies the CURRENT import plan (ADR-032) — queued from the import
+        // screen for bulk sets a web request must not carry. No payload: the
+        // plan store is the single source. maxAttempts 1: a stale plan must
+        // never be retried against data that moved.
+        'import-apply' => [
+            'class'       => \Z77\Shared\Jobs\ImportApplyJob::class,
+            'label'       => 'Import — Plan anwenden',
+            'runAs'       => AuthRole::SUPER_USER,
+            'maxAttempts' => 1,
+        ],
+        // The form log's broom (geo guard, see docs/topics/forms.md). No
+        // 'defaultSchedule': it DELETES the installation's data, so an
+        // operator switches it on — the delete-vs-schedule rule, same as
+        // member-cleanup.
+        'form-log-cleanup' => [
+            'class'       => \Z77\Shared\Forms\FormLogSweepJob::class,
+            'label'       => 'Formular-Protokoll-Bereinigung',
+            'runAs'       => AuthRole::CRON_JOB,
+            'maxAttempts' => 2,
+        ],
+        // ⚠️ SHIPS a schedule, and that is not a violation of the rule above:
+        // this job replaces a file it downloaded itself, and doing so is a
+        // LICENCE OBLIGATION (GeoLite EULA: keep current, destroy the
+        // previous version within 30 days). A duty that waits for an operator
+        // to remember it is not a duty being met. Weekly, although the fetch
+        // only fires past `maxAgeDays` (30): the schedule is the knock on the
+        // door, the age is the answer — a just-expired database is renewed
+        // within days instead of within a month.
+        //
+        // Registered HERE because the geo guard is a kernel capability of
+        // every public form (PublicFormHandler::withGeoGuard()), operated
+        // from this module's service section. It used to be registered by
+        // module-member; a project override of memberConfig that still
+        // carries the entry double-declares the key — fail-fast — and must
+        // drop it.
+        'geoip-update' => [
+            'class'           => \Z77\Shared\GeoIp\GeoIpUpdateJob::class,
+            'label'           => 'GeoIP-Datenbank erneuern',
+            'runAs'           => AuthRole::CRON_JOB,
+            'maxAttempts'     => 2,
+            'defaultSchedule' => 'weekly@mon,04:20',
         ],
     ],
 ];
