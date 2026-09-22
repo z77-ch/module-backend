@@ -10,6 +10,14 @@ return [
         'content'   => 'navigation',
         'documents' => 'drive',
         'service'   => 'backup',
+        // Business master data of the order/debtor/financial plan (ADR-040):
+        // tax codes (module-vat), chart of accounts and fiscal years
+        // (module-financial); invoices later. The mounts resolve only in
+        // projects that install the owning module.
+        'finance'   => 'tax-code',
+        // Contacts with typed addresses (module-contact, plan §4a) — the
+        // party debtor and order share. Same mount pattern as `finance`.
+        'contact'   => 'contact',
     ],
     // View area: this module owns a layout and is a top-level UI environment.
     // The environment identity is the module key; its display label + navigation
@@ -82,6 +90,13 @@ return [
             // SystemController (POST-only fetch endpoints) deliberately has NO
             // entry: the `list` convention resolves /backend/system/system to a
             // listAction that does not exist → 404 by design (ADR-005).
+        ],
+        'finance' => [
+            // The ledger reports (module-financial, plan §5.5) have no list —
+            // the trial balance is their first page.
+            'ReportController' => [
+                'defaultAction' => 'trial-balance',
+            ],
         ],
         'documents' => [
             // Byte delivery only (Drive preview/thumbnail + download) — deviates
