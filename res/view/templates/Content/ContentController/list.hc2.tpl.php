@@ -6,8 +6,8 @@
  * the skeleton; this partial supplies its inner content. Rendered with the action context
  * (same `$this->context` as `main`), so `$editLanguage` / `$editLanguages` are available.
  *
- * Layout per the shell prototype: LEFT = context (editing-language switcher). The primary add
- * action lives in the LEFT slot (hc1); shortcut icons would go on the right here as needed.
+ * Layout: the editing-language switcher — tabs, the underline look of `.be-viewtabs`. The add
+ * action moved to the action cell (`list.act.tpl.php`, ADR-033 rev. 2026-10-08).
  *
  * @var string            $editLanguage
  * @var array<int,string> $editLanguages

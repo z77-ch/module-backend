@@ -178,9 +178,14 @@ abstract class BackendAbstractController extends AbstractBaseController
      * Shell rebuild Phase 2 — header-slot auto-loader. For the CURRENT controller/action this
      * loads convention partials into the shell's aligned header band (body sections
      * hc1/hc2/hc3/tabs) IF the files exist:
-     * `{Group}/{Controller}/{action}.hc1|hc2|hc3|tabs.tpl.php`. `tabs` is the tab row (B10
+     * `{Group}/{Controller}/{action}.hc1|hc2|hc3|tabs.tpl.php`. The speaking region names
+     * `act|toolbar|crumb` are accepted for `hc1|hc2|hc3` and win when both exist (glossary in
+     * docs/topics/css-backend.md → shell regions); new templates use them. `tabs` is the tab row (B10
      * v1.17.0) — unlike the other three it renders only when the file exists, because tabs
-     * belong to the screen, not to the shell. A view thus only
+     * belong to the screen, not to the shell. `{action}.select` fills the section `railSelect`:
+     * a selection that holds for the whole area (the fiscal year), rendered at the top of the
+     * rail and only when present (ADR-033 rev. 2026-10-08). The action cell (`act`/hc1) carries
+     * the entry's most frequent action — one flush button. A view thus only
      * DROPS IN the partial file(s) — no per-action `addPartials` boilerplate; every backend area
      * is wired identically. The partial is rendered with the full action context (HtmlView renders
      * every section with the same data), so it can read the action's view-model vars. A view with
@@ -202,10 +207,22 @@ abstract class BackendAbstractController extends AbstractBaseController
         $action = preg_replace('/Action$/', '', $handler->getCurrentActionMethod());
         $finder = DI::getFileFinder();
 
-        foreach (['hc1', 'hc2', 'hc3', 'tabs'] as $slot) {
-            $file = $action . '.' . $slot;   // e.g. "list.hc1"
-            if ($finder->getFirstTplMatch($dir . '/' . $file . '.tpl.php', self::NAMESPACE, throwError: false) !== null) {
-                $this->layoutManager->addPartials($file, $dir, self::NAMESPACE, $slot);
+        // Body section => accepted file suffixes, speaking name first. Only the first match loads,
+        // so a screen that has both never renders its slot twice.
+        $slots = [
+            'hc1'        => ['act', 'hc1'],
+            'hc2'        => ['toolbar', 'hc2'],
+            'hc3'        => ['crumb', 'hc3'],
+            'tabs'       => ['tabs'],
+            'railSelect' => ['select'],
+        ];
+        foreach ($slots as $section => $suffixes) {
+            foreach ($suffixes as $suffix) {
+                $file = $action . '.' . $suffix;   // e.g. "list.act"
+                if ($finder->getFirstTplMatch($dir . '/' . $file . '.tpl.php', self::NAMESPACE, throwError: false) !== null) {
+                    $this->layoutManager->addPartials($file, $dir, self::NAMESPACE, $section);
+                    break;
+                }
             }
         }
     }

@@ -20,6 +20,7 @@
 @use 'components/guest';
 @use 'components/subnav';
 @use 'components/shell';
+@use 'components/radiotabs';
 @use 'components/shell-banner';
 @use 'components/service-panel';
 @use 'components/overview';
@@ -30,4 +31,10 @@
 // stylesheet.
 @use '../../../kernel/shared/res/scss/components/split';
 @use 'components/split-host';
+@use '../../../kernel/shared/res/scss/components/windows';
+@use 'components/windows-host';
+@use '../../../kernel/shared/res/scss/components/help';
+@use 'components/help-host';
+@use '../../../kernel/shared/res/scss/components/form-actions';
+@use 'components/form-actions-host';
 @use 'components/dms-host';
