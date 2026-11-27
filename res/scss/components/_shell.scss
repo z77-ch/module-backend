@@ -1,3 +1,5 @@
+@use 'link-hover' as link;
+
 // ── Backend Shell ──────────────────────────────────────────────────────────────
 // Self-contained: one grid (topbar spanning + column 1 | 2), own viewport height, own
 // responsive rules — independent of the legacy layout/*.scss (which target the old
@@ -8,18 +10,20 @@
 // list is the workspace's job (`.z77-split`), so there is one mechanism for it, not two.
 
 .be-shell {
-    --shell-c1:    248px;  // orientation column (drag-resizable, via the shared z77-split handle)
-    --shell-bar:   48px;   // topbar height
+    // The shell's rows and the rail are rem (2026-11-26): they hold text, so they grow with the
+    // font slider (root 16px × slider). Values are the former px / 16.
+    --shell-c1:    15.5rem;   // 248px — orientation column (drag-resizable, via the shared z77-split handle)
+    --shell-bar:   3rem;      // 48px — topbar height
     // The band (action cell | toolbar) is exactly as high as the top bar (owner 2026-10-08):
     // area switcher and action cell form one column of equal cells, and on a phone the act
     // button is a square of this size. ONE value — change --shell-bar and both follow.
     --shell-band:  var(--shell-bar);
-    // Crumb line height (hc3) — slimmer, it carries smaller type. FIXED: the grid track AND the
+    // Crumb line height (hc3) — slimmer, a position line, not a heading. FIXED: the grid track AND the
     // slot use this one token, and the slot clips (overflow hidden) — so no content can make a
     // page's crumb line taller than another's. The help trigger left it for the top bar
     // (ADR-048 addendum, owner 2026-10-08).
-    --shell-crumb: 32px;
-    --shell-tabs:  38px;   // tab row — rendered ONLY by screens that carry tabs
+    --shell-crumb: 2rem;      // 32px
+    --shell-tabs:  2.375rem;  // 38px — tab row, rendered ONLY by screens that carry tabs
     // ONE left edge for the work area (owner 2026-10-10, «die Abstufung stimmt nicht»): the
     // crumb, the toolbar's first control, a section title, a list's head and its first cell all
     // start here. Nothing else indents — only a tree child, one step per level (`--node-depth`).
@@ -88,6 +92,17 @@ body.backend {
 .be-shell-col--1 { grid-column: 1; grid-row: 3 / -1; background: var(--be-nav, var(--be-surface)); border-right: 1px solid var(--be-line); }
 .be-shell-col--2 { grid-column: 2; background: var(--be-bg); }
 
+// What lies above the work side's first text line, for the rail's menu (RAIL-ALIGN-001, the formula
+// in `_subnav.scss`): read from the page itself, never set per screen. A tab row (`.be-shell-tabs`,
+// its track + its 1px line) pushes the work side down; a step box first in the first card
+// (`partials/listStep`) pushes the card's first line down; a rail-top selection pushes the menu
+// down. Without `:has()` the flags stay 0 — the menu then aligns for the plain list.
+.be-shell:has(> .be-shell-tabs) { --rail-tabs: calc(var(--shell-tabs) + 1px); }
+.be-shell:has(> .be-shell-col--2 .be-list__section:first-child > .be-list__step:first-child) {
+    --rail-step: calc(1px + var(--be-step-pad));
+}
+.be-shell-col--1:has(> .be-shell-select) { --rail-select: var(--shell-band); }
+
 // Neutralize the legacy subnav's own frame — the shell column owns width + scroll now.
 .be-shell-col--1 .backend-subnav { width: 100%; height: auto; border: 0; }
 // The subnav's own section-title header is redundant in the shell — the topbar module
@@ -103,7 +118,7 @@ body.backend {
 // dark background (--be-surface fallback) and blends into the rest of the UI.
 .be:not([data-be-theme="dark"]) .be-shell-col--1,
 .be:not([data-be-theme="dark"]) .be-shell-band__slot--1,
-.be:not([data-be-theme="dark"]) .be-shell-topbar__mod {            // salbei (default) — deep sage green
+.be:not([data-be-theme="dark"]) .be-shell-topbar__mod {            // salbei (base block) — deep sage green
     --be-nav:#1a2f29; --be-text:#e3eeea; --be-muted:#9db6ae; --be-line:#2f4a42;
     --be-surface:#223b34; --be-surface2:#29453d; --be-accent:#6cc3ad; --be-accent-soft:#264740; --be-on-accent:#1a2f29;
 }
@@ -147,6 +162,29 @@ body.backend {
     --be-line-strong: color-mix(in srgb, var(--be-line) 80%, var(--be-muted));
     --be-row-tint:    color-mix(in srgb, var(--be-surface2) 96%, var(--be-text));
 }
+// schwarzweiss — NO dark island (owner 2026-11-26, design-lab decision 1 = B, this palette only):
+// the left column stays white, black ink, and is set off by a black line on its right. Same
+// wrapper-token mechanism, light values; specificity (0,4,0) beats the shared rule above (0,3,0),
+// so its scheme, field and row tint are overridden here too. The column and the action cell carry
+// their right-hand line already (`border-right` in `--be-line`, black here); the topbar module
+// zone gets it so the line runs the column's full height. Confirm in the action cell is the
+// palette's dark green with white ink (the shared light island green would vanish on white).
+.be[data-be-palette="schwarzweiss"]:not([data-be-theme="dark"]) .be-shell-col--1,
+.be[data-be-palette="schwarzweiss"]:not([data-be-theme="dark"]) .be-shell-band__slot--1,
+.be[data-be-palette="schwarzweiss"]:not([data-be-theme="dark"]) .be-shell-topbar__mod {
+    color-scheme: light;
+    --be-nav:#ffffff; --be-text:#000000; --be-muted:#000000; --be-line:#000000; --be-surface:#f2f2f2; --be-surface2:#ffffff; --be-accent:#000000; --be-accent-soft:#e4e4e3; --be-on-accent:#ffffff;
+    --be-field:#ffffff; --be-row-tint:#f2f2f2;
+    --be-confirm-island:#1a7f4b; --be-on-confirm-island:#ffffff;
+}
+// The rail's tree carries its own ground (`--be-surface`, #f2f2f2 here) only as high as its entries;
+// the column below it is `--be-nav` (white). Without the island the column is ONE white rail from top
+// to bottom (owner 2026-11-27, as in the design lab), so the tree takes no ground of its own here.
+.be[data-be-palette="schwarzweiss"]:not([data-be-theme="dark"]) .be-shell-col--1 .backend-subnav,
+.be[data-be-palette="schwarzweiss"]:not([data-be-theme="dark"]) .be-shell-col--1 .backend-subnav__header { background: transparent; }
+// The zone's box-shadow covers the topbar's bottom line so a dark island flows into the column
+// below; without an island the line must run through over the column too (owner 2026-11-27).
+.be[data-be-palette="schwarzweiss"]:not([data-be-theme="dark"]) .be-shell-topbar__mod { border-right: 1px solid var(--be-line); box-shadow: none; }
 
 // ── Header band (hc1 | hc2) ────────────────────────────────────────────────────
 // Its OWN grid row spanning both columns, mirroring the column split with the same
@@ -182,7 +220,7 @@ body.backend {
 .be-shell-band__slot--1 {
     background:   var(--be-nav, var(--be-surface));
     border-right: 1px solid var(--be-line);
-    padding:      7px 8px;
+    padding:      .4375rem .5rem;   // 7px 8px
     align-items:  stretch;
 }
 .be-shell-band__slot--2 { background: var(--be-bg); padding-inline: var(--be-edge); }
@@ -261,6 +299,27 @@ body.backend {
     border-bottom-color: var(--be-accent);
 }
 
+// Schwarz-Weiss only (owner 2026-11-27, VIEWTABS-SW-001): the active tab is a solid FILL in «Fernblau»
+// (`--be-active` / `--be-on-active`, declared in this palette's blocks only, tokens/_colors.scss) —
+// no underline, not grey: in this palette muted = text, so an underline in the black accent did not
+// set the active tab apart. The other palettes keep the underline. In the band the tabs are inset by
+// the slot's vertical padding, so the fill is a rounded block with air above and below, not a
+// band-high bar; every tab gets the inset (no jump when one becomes active) and loses the 2px line
+// slot. The first tab keeps its padding and takes it back as a negative margin: its TEXT stays on
+// the edge (EDGE-001), the fill bleeds into the slot's padding.
+[data-be-palette="schwarzweiss"] {
+    .be-viewtabs__tab { border-bottom: 0; border-radius: var(--radius-sm); }
+    .be-shell-band__slot .be-viewtabs__tab { margin-block: var(--space-2); }
+    .be-shell-band__slot .be-viewtabs:first-child .be-viewtabs__tab:first-child {
+        padding-left: var(--space-3);
+        margin-left:  calc(-1 * var(--space-3));
+    }
+    .be-viewtabs__tab.is-active {
+        background: var(--be-active);
+        color:      var(--be-on-active);
+    }
+}
+
 // ── Crumb line (hc3) ───────────────────────────────────────────────────────────
 // Its own slim row under the band (ADR-033): POSITION and its state, nothing else. A screen
 // without an own hc3 template gets the navigation-derived default crumb (skeleton).
@@ -303,17 +362,20 @@ body.backend {
     align-items:     center;
     box-sizing:      border-box;
     height:          var(--shell-crumb);
-    // On the line of the menu labels below (owner 2026-10-22): the tree's 6px inset, the
-    // 14px toggle cell and the node gap (_subnav.scss) — same size as a menu entry.
-    padding:         0 var(--space-3) 0 calc(6px + 14px + var(--space-1));
+    // On the line of the menu labels below (owner 2026-10-22): the tree's .375rem inset, the
+    // .875rem toggle cell and the node gap (_subnav.scss) — same size as a menu entry.
+    padding:         0 var(--space-3) 0 calc(.375rem + .875rem + var(--space-1));
     background:      var(--be-nav, var(--be-surface));
     border-bottom:   1px solid var(--be-line);
-    font-size:       0.78125rem;
+    font-size:       var(--font-size-md);
     color:           var(--be-muted);
     text-decoration: none;
     white-space:     nowrap;
 
-    &:hover, &:focus-visible { color: var(--be-text); outline: none; }
+    // The shared link hover (LINK-HOVER-001), square — the row spans the column. Painted over the
+    // opaque `--be-nav` (sticky), the ground is also its focus look.
+    @include link.hover($radius: null);
+    &:focus-visible { outline: none; }
 }
 
 // The default crumb: section › page, muted, small — a position line, not a heading.
@@ -322,14 +384,13 @@ body.backend {
     align-items: center;
     gap:         var(--space-1);
     min-width:   0;
-    // As small as the toolbar's search placeholder (`.be-input--sm`, .8125rem — owner
-    // 2026-10-10: «so klein wie der Placeholder im Suchfeld darüber»). Fixed like the
-    // inputs: with the font scale it grew past the toolbar above it.
-    font-size:   .8125rem;
+    // As large as the toolbar's search placeholder (`.be-input--sm`, owner 2026-10-10: «so klein
+    // wie der Placeholder im Suchfeld darüber») — both on the flat baseline since 2026-11-26, and
+    // both follow the slider; the crumb row (`--shell-crumb`, rem) grows with them.
+    font-size:   var(--font-size-md);
     color:       var(--be-muted);
 
-    a { color: var(--be-muted); text-decoration: none; }
-    a:hover { color: var(--be-text); }
+    a { color: var(--be-muted); text-decoration: none; @include link.hover(var(--space-1)); }
 
     &__sep  { color: var(--be-muted); opacity: 0.6; }
     &__here { color: var(--be-text); font-weight: var(--font-weight-medium);
@@ -437,8 +498,10 @@ body.backend {
 // action cell's picker and the rail-top selection (owner 2026-10-08, after the live look: the
 // pure white card did not belong to the palette). A light TINT of the page accent: the card is
 // `--be-accent-soft-page` mixed into the page surface, framed by a 1px line a touch stronger
-// than the tint, items on hover and the current item in the full `--be-accent-soft-page` with
-// the page accent as ink. Works per palette without a value of its own — it reads the page
+// than the tint, the current item in the full `--be-accent-soft-page` with the page accent as ink;
+// an item on hover takes the shared link hover (LINK-HOVER-001, on `.be-shell-add__item` below) —
+// a grey from the page text, since the card sets `--be-text` back to the page's. Works per palette
+// without a value of its own — it reads the page
 // tokens. It must read as a menu, not as part of the rail: the island block redefines the
 // --be-* tokens on the cell/column, so the card sets them back to the page values (`--be-*-page`,
 // resolved on <html>, tokens/_colors.scss) and everything inside follows.
@@ -472,7 +535,6 @@ body.backend {
     }
 
     .be-shell-add__item { padding: 8px 10px; }
-    .be-shell-add__item:hover:not(:disabled),
     .be-shell-add__item[aria-current] { background: var(--shell-card-hi); color: var(--be-accent); }
 }
 .be-shell-band__slot--1 {
@@ -506,10 +568,10 @@ body.backend {
     cursor:        pointer;
     transition:    background var(--transition-fast);
 }
-.be-shell-add__item:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--be-accent) 22%, transparent);
-    color:      var(--be-accent);
-}
+// A picker item is a menu entry: the shared link hover (LINK-HOVER-001; was an accent tint with
+// accent ink). `:where()` keeps it at (0,2,0) — the current item (`[aria-current]`, later and
+// heavier) keeps its own look; a disabled item gets no ground.
+.be-shell-add__item:where(:not(:disabled)) { @include link.hover($radius: null); }
 // A picker item whose action POSTs (rather than opening a modal) is wrapped in its own
 // <form>. `display:contents` keeps the wrapper out of the panel's flex column, so the
 // button still lays out as a direct panel child — no inline style in the template.
@@ -573,7 +635,7 @@ details.be-shell-add--select > summary {
 // stays inside it (control width).
 .be-shell-select {
     flex:    none;
-    padding: 7px 8px;
+    padding: .4375rem .5rem;   // 7px 8px, as the action cell
 }
 .be-shell-select .be-shell-add { display: flex; width: 100%; }
 .be-shell-select details.be-shell-add--select > summary {
@@ -581,8 +643,8 @@ details.be-shell-add--select > summary {
     align-items:     center;
     gap:             var(--space-2);
     width:           100%;
-    height:          calc(var(--shell-band) - 14px);
-    padding:         0 10px 0 12px;
+    height:          calc(var(--shell-band) - .875rem);   // the band less the cell's padding
+    padding:         0 .625rem 0 .75rem;
     background:      var(--be-accent-soft);
     border:          1px solid var(--be-accent);
     border-radius:   7px;
@@ -693,8 +755,8 @@ details.be-shell-add--select > summary {
 }
 
 .be-shell-iconbtn {
-    width:           30px;
-    height:          30px;
+    width:           1.875rem;   // 30px
+    height:          1.875rem;
     display:         grid;
     place-items:     center;
     border:          1px solid transparent;
@@ -745,17 +807,19 @@ details.be-shell-add--select > summary {
 }
 .be-shell-mod__name {
     font-weight:     var(--font-weight-medium);
-    font-size:       1.125rem;              // match .backend-subnav__title (follows the font-size slider via rem)
+    font-size:       var(--font-size-md);   // the flat baseline, like .backend-subnav__title (2026-11-26)
     letter-spacing:  -0.01em;
     color:           var(--be-text);
     text-decoration: none;
-    padding:         5px 8px;
+    padding:         .3125rem .5rem;   // 5px 8px
     border-radius:   var(--radius-sm);
     overflow:        hidden;
     text-overflow:   ellipsis;
     white-space:     nowrap;
 }
-.be-shell-mod__name:hover { background: var(--be-accent-soft); color: var(--be-accent); }
+// The shared link hover (LINK-HOVER-001; was the island's accent-soft with accent ink) — in the
+// island the grey derives from its light text.
+.be-shell-mod__name { @include link.hover($radius: null); }
 
 .be-shell-mod__apps {
     flex-shrink:   0;
@@ -780,7 +844,7 @@ details.be-shell-add--select > summary {
     top:           calc(100% + var(--space-1));
     left:          0;
     z-index:       var(--z-dropdown);
-    width:         360px;
+    width:         22.5rem;   // 360px
     max-width:     78vw;
     padding:       var(--space-2);
     background:    var(--be-surface2);
@@ -796,14 +860,16 @@ details.be-shell-add--select > summary {
     flex-direction:  column;
     align-items:     center;
     gap:             var(--space-2);
-    padding:         14px 8px 12px;
+    padding:         .875rem .5rem .75rem;   // 14px 8px 12px
     border:          1px solid transparent;
     border-radius:   var(--radius-md);
     text-decoration: none;
     color:           var(--be-text);
     cursor:          pointer;
 }
-.be-shell-mod__tile:hover { background: var(--be-accent-soft); }
+// The shared link hover (LINK-HOVER-001; was accent-soft — the active tile's own ground). The active
+// tile keeps its frame and ground alone, as the rail's active entry does; an inert tile gets none.
+.be-shell-mod__tile:where(:not(.be-shell-mod__tile--inert, .be-shell-mod__tile--active)) { @include link.hover($radius: null); }
 .be-shell-mod__tile--active { border-color: var(--be-accent); background: var(--be-accent-soft); }
 .be-shell-mod__tile--inert { opacity: .55; cursor: default; }
 .be-shell-mod__ico {
@@ -817,13 +883,13 @@ details.be-shell-add--select > summary {
     color:         var(--be-muted);
 }
 .be-shell-mod__tile--active .be-shell-mod__ico { background: var(--be-accent); border-color: var(--be-accent); color: var(--be-on-accent); }
-.be-shell-mod__label { font-size: 0.78125rem; font-weight: var(--font-weight-medium); text-align: center; }
+.be-shell-mod__label { font-size: var(--font-size-md); font-weight: var(--font-weight-medium); text-align: center; }
 
 // Sandwich — hidden on desktop, shown on mobile
 .be-shell-topbar__burger {
     display:       none;
-    width:         30px;
-    height:        30px;
+    width:         1.875rem;   // 30px
+    height:        1.875rem;
     margin-left:   var(--space-2);
     flex-shrink:   0;
     place-items:   center;
@@ -1044,15 +1110,15 @@ details.be-shell-add--select > summary {
     display:       flex;
     align-items:   center;
     gap:           var(--space-1);
-    height:        30px;
+    height:        1.875rem;   // 30px — grows with the slider; its small mono label stays (pill)
     padding:       0 var(--space-2);
-    background:    var(--be-bg);
+    background:    transparent;   // no grey ground (owner 2026-11-27) — the frame alone, like the help button beside it
     border:        1px solid var(--be-line);
     border-radius: var(--radius-md);
     color:         var(--be-text);
     cursor:        pointer;
     font-family:   var(--font-family-mono);
-    font-size:     0.65625rem;
+    font-size:     0.65625rem;   // small caps label in the pill — exception to the flat baseline
     letter-spacing: 0.06em;
     flex-shrink:   0;
     transition:    background var(--transition-fast);
@@ -1098,7 +1164,7 @@ details.be-shell-add--select > summary {
     position:      absolute;
     top:           calc(100% + var(--space-1));
     right:         0;
-    min-width:     180px;
+    min-width:     11.25rem;   // 180px
     padding:       var(--space-1);
     background:    var(--be-surface);
     border:        1px solid var(--be-line);
@@ -1123,13 +1189,12 @@ details.be-shell-add--select > summary {
     border-radius: var(--radius-sm);
     color:         var(--be-text);
     text-decoration: none;
-    font-size:     0.8125rem;
+    font-size:     var(--font-size-md);
     transition:    background var(--transition-fast);
 }
 
-.backend-topbar__env-item:hover {
-    background: var(--be-bg);
-}
+// The shared link hover (LINK-HOVER-001; was `--be-bg`).
+.backend-topbar__env-item { @include link.hover($radius: null); }
 
 .backend-topbar__env-item--active {
     color:       var(--be-accent);
@@ -1149,15 +1214,15 @@ details.be-shell-add--select > summary {
 }
 
 .backend-topbar__avatar {
-    width:            30px;
-    height:           30px;
+    width:            1.875rem;   // 30px — the circle grows with the slider
+    height:           1.875rem;
     border-radius:    50%;
     background:       var(--be-accent);
     color:            var(--be-surface);
     display:          flex;
     align-items:      center;
     justify-content:  center;
-    font-size:        0.65rem;   // fits 3-char initials in the 30px circle
+    font-size:        0.65rem;   // fits 3-char initials in the circle — exception to the flat baseline
     font-weight:      var(--font-weight-semibold);
     line-height:      normal;
     border:           none;
